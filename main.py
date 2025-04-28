@@ -1,10 +1,13 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi.responses import FileResponse
 from fastapi.responses import JSONResponse
 from pdf_utils import extract_pdf_data
-from auto_eda import perform_eda_on_documents
+from auto_eda import full_eda_batch
 from bson import ObjectId
 from db import collection
 from models import PDFDocument
+from typing import List
+import os
 
 import tempfile
 import shutil
@@ -46,25 +49,34 @@ def get_documents():
     """
     docs = collection.find({}, {"filename": 1})
     return [{"id": str(doc["_id"]), "filename": doc["filename"]} for doc in docs]
+    
+@app.post("/run_batch_eda/")
+async def run_batch_eda(document_ids: List[str]):
+    """
+    Run EDA on multiple documents at once.
+    """
+    # Validate all documents exist first
+    existing_docs = collection.find({"_id": {"$in": [ObjectId(doc_id) for doc_id in document_ids]}})
+    existing_ids = {str(doc["_id"]) for doc in existing_docs}
+    missing_ids = set(document_ids) - existing_ids
 
-@app.post("/run_eda/")
-async def run_eda(document_ids: list[str]):
-    """
-    Run EDA only on the specified documents (by MongoDB _id).
-    """
+    if missing_ids:
+        raise HTTPException(status_code=404, detail=f"Documents not found: {list(missing_ids)}")
+
     try:
-        # Convert string IDs to ObjectId
-        object_ids = [ObjectId(doc_id) for doc_id in document_ids]
-        
-        # Fetch only specified documents
-        documents = list(collection.find({"_id": {"$in": object_ids}}))
-        
-        if not documents:
-            raise HTTPException(status_code=404, detail="No documents found for provided IDs.")
+        # Run batch EDA
+        stats = full_eda_batch(document_ids)
 
-        # Perform EDA
-        perform_eda_on_documents(documents)
-        
-        return {"message": "EDA completed successfully. Check the outputs directory."}
+        return JSONResponse(content={
+            "message": "Batch EDA completed successfully.",
+            "document_stats": stats
+        })
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return JSONResponse(content={"error": str(e)}, status_code=500)
+    
+@app.get("/outputs/{filename}")
+async def get_output_file(filename: str):
+    file_path = os.path.join("outputs", filename)
+    if not os.path.isfile(file_path):
+        raise HTTPException(status_code=404, detail="File not found")
+    return FileResponse(file_path)

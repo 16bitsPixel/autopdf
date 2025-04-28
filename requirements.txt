@@ -7,3 +7,6 @@ matplotlib
 tqdm
 transformers
 torch
+scikit-learn
+wordcloud
+pandas
