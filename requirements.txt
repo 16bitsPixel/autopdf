@@ -3,3 +3,7 @@ pymongo
 pydantic
 PyMuPDF
 fastapi
+matplotlib
+tqdm
+transformers
+torch
