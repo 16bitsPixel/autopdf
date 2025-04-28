@@ -1,6 +1,8 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import JSONResponse
 from pdf_utils import extract_pdf_data
+from auto_eda import perform_eda_on_documents
+from bson import ObjectId
 from db import collection
 from models import PDFDocument
 
@@ -44,3 +46,25 @@ def get_documents():
     """
     docs = collection.find({}, {"filename": 1})
     return [{"id": str(doc["_id"]), "filename": doc["filename"]} for doc in docs]
+
+@app.post("/run_eda/")
+async def run_eda(document_ids: list[str]):
+    """
+    Run EDA only on the specified documents (by MongoDB _id).
+    """
+    try:
+        # Convert string IDs to ObjectId
+        object_ids = [ObjectId(doc_id) for doc_id in document_ids]
+        
+        # Fetch only specified documents
+        documents = list(collection.find({"_id": {"$in": object_ids}}))
+        
+        if not documents:
+            raise HTTPException(status_code=404, detail="No documents found for provided IDs.")
+
+        # Perform EDA
+        perform_eda_on_documents(documents)
+        
+        return {"message": "EDA completed successfully. Check the outputs directory."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
