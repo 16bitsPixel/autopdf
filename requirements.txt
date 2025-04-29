@@ -10,3 +10,8 @@ torch
 scikit-learn
 wordcloud
 pandas
+chromadb
+sentence_transformers
+langchain
+langchain_chroma
+langchain_huggingface

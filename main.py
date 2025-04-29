@@ -5,8 +5,10 @@ from pdf_utils import extract_pdf_data
 from auto_eda import full_eda_batch
 from bson import ObjectId
 from db import collection
-from models import PDFDocument
+from models import PDFDocument, SearchRequest, DeleteRequest
 from typing import List
+from semantic_search_qa import split_documents, add_to_chroma, delete_texts_from_chroma
+from langchain.schema import Document
 import os
 
 import tempfile
@@ -34,13 +36,49 @@ async def upload_pdf(file: UploadFile = File(...)):
 
         # Save to MongoDB
         inserted = collection.insert_one(pdf_document.dict())
+        inserted_id = str(inserted.inserted_id)
+
+        # Convert each page into a Document (Langchain)
+        docs = []
+        for page in pdf_data["pages"]:
+            if page["text"].strip():
+                metadata = {
+                    "source": inserted_id,
+                    "page": page["page_number"],
+                }
+                docs.append(Document(page["text"], metadata=metadata))
+
+        # Split and store in Chroma
+        chunks = split_documents(docs)
+        add_to_chroma(chunks)
 
         return JSONResponse(content={"message": "PDF uploaded and data extracted successfully.", "id": str(inserted.inserted_id)}, status_code=200)
     except Exception as e:
         return JSONResponse(content={"error": str(e)}, status_code=500)
     finally:
         # Clean up the temporary file
-        shutil.rmtree(temp_file_path, ignore_errors=True)
+        os.remove(temp_file_path)
+
+@app.delete("/delete_pdf/")
+async def delete_pdf(request: DeleteRequest):
+    """
+    Delete a PDF document from MongoDB and its embeddings from ChromaDB using ID.
+    """
+    try:
+        # Step 1: Find and delete from MongoDB
+        doc = collection.find_one({"_id": ObjectId(request.id)})
+        if not doc:
+            return JSONResponse(content={"error": "PDF not found."}, status_code=404)
+
+        collection.delete_one({"_id": ObjectId(request.id)})
+
+        # Step 2: Delete all related pages from ChromaDB
+        delete_texts_from_chroma(request.id)
+
+        return JSONResponse(content={"message": "PDF and embeddings deleted successfully."}, status_code=200)
+
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)
 
 @app.get("/documents/")
 def get_documents():

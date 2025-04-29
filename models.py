@@ -13,3 +13,10 @@ class PageData(BaseModel):
 class PDFDocument(BaseModel):
     filename: str
     pages: List[PageData]
+
+class SearchRequest(BaseModel):
+    query: str
+    top_k: int = 5
+
+class DeleteRequest(BaseModel):
+    id: str
