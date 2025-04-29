@@ -5,6 +5,8 @@ from langchain_chroma import Chroma
 from langchain.schema import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from embedding import get_embedding_function
+from langchain.prompts import ChatPromptTemplate
+from gpt4all import GPT4All
 import os
 
 # --- Initialize Models and Database ---
@@ -12,6 +14,16 @@ embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
 qa_pipeline = pipeline("question-answering", model="deepset/roberta-base-squad2")
 
 CHROMA_PATH = "chroma"
+
+PROMPT_TEMPLATE = """
+Answer the question based only on the following context:
+
+{context}
+
+---
+
+Answer the question based on the above context: {question}
+"""
 
 # --- Helper Functions ---
 def split_documents(documents: list[Document]):
@@ -109,24 +121,44 @@ def delete_texts_from_chroma(source_id: str):
     else:
         print(f"No documents found for source ID: {source_id}")
 
-def retrieve_similar_documents(query, k=5):
-    """Retrieve top-k similar documents from Chroma DB."""
-    query_embedding = embedding_model.encode([query])
-    results = collection.query(query_embeddings=query_embedding, n_results=k)
+def query_semantic_search(query_text: str):
+    # Prepare the DB.
+    embedding_function = get_embedding_function()
+    db = Chroma(persist_directory=CHROMA_PATH, embedding_function=embedding_function)
 
-    # Ensure results contain 'documents' and 'metadatas'
-    documents = results.get('documents', [])
-    print(documents)
-    metadatas = results.get('metadatas', [])
+    # Search the DB.
+    results = db.similarity_search_with_score(query_text, k=5)
 
-    # If no documents are found, return empty lists
-    if not documents:
-        return [], []
+    # Organize results
+    structured_results = []
+    for doc, score in results:
+        structured_results.append({
+            "content": doc.page_content,
+            "metadata": doc.metadata,
+            "score": score
+        })
 
-    # Return documents and their corresponding metadata
-    return documents, metadatas
+    return {
+        "query": query_text,
+        "results": structured_results
+    }
 
-def answer_question(question, context):
-    """Use QA model to answer a question given the context."""
-    result = qa_pipeline(question=question, context=context)
-    return result.get('answer', 'No answer found.')
+def query_rag(query_text: str):
+    # Prepare the DB.
+    embedding_function = get_embedding_function()
+    db = Chroma(persist_directory=CHROMA_PATH, embedding_function=embedding_function)
+
+    # Search the DB.
+    results = db.similarity_search_with_score(query_text, k=3)
+
+    context_text = "\n\n---\n\n".join([doc.page_content for doc, _score in results])
+    prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
+    prompt = prompt_template.format(context=context_text, question=query_text)
+    # print(prompt)
+
+    model = GPT4All("mistral-7b-openorca.gguf2.Q4_0.gguf")  # model downloaded on first run
+    response_text = model.generate(prompt)
+
+    sources = [doc.metadata.get("id", None) for doc, _score in results]
+    formatted_response = f"Response: {response_text}\nSources: {sources}"
+    return formatted_response

@@ -5,9 +5,9 @@ from pdf_utils import extract_pdf_data
 from auto_eda import full_eda_batch
 from bson import ObjectId
 from db import collection
-from models import PDFDocument, SearchRequest, DeleteRequest
+from models import PDFDocument, SearchRequest, DeleteRequest, QAQuery
 from typing import List
-from semantic_search_qa import split_documents, add_to_chroma, delete_texts_from_chroma
+from semantic_search_qa import split_documents, add_to_chroma, delete_texts_from_chroma, query_semantic_search, query_rag
 from langchain.schema import Document
 import os
 
@@ -118,3 +118,23 @@ async def get_output_file(filename: str):
     if not os.path.isfile(file_path):
         raise HTTPException(status_code=404, detail="File not found")
     return FileResponse(file_path)
+
+@app.post("/semantic-search")
+def semantic_search(request: SearchRequest):
+    """
+    Retrieve top-k similar documents based on semantic similarity.
+    """
+    results = query_semantic_search(query_text=request.query)
+    return results
+
+@app.post("/document-qa")
+def document_qa(request: QAQuery):
+    """
+    Run RAG pipeline to answer a question based on top-k relevant documents.
+    """
+    response_text = query_rag(query_text=request.question)
+    
+    return {
+        "question": request.question,
+        "answer": response_text
+    }

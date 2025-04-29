@@ -16,7 +16,9 @@ class PDFDocument(BaseModel):
 
 class SearchRequest(BaseModel):
     query: str
-    top_k: int = 5
 
 class DeleteRequest(BaseModel):
     id: str
+
+class QAQuery(BaseModel):
+    question: str
