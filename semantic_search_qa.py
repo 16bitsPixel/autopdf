@@ -111,9 +111,6 @@ def delete_texts_from_chroma(source_id: str):
         if metadata.get("source") == source_id:
             existing_ids.add(existing_items["ids"][i])  # We want to collect the id (document ID)
 
-    # print existing_ids for debugging
-    print(f"Existing IDs for source ID {source_id}: {existing_ids}")
-
     # If we found any documents for the source_id, delete them
     if existing_ids:
         db.delete(ids=list(existing_ids))  # Now delete by ids

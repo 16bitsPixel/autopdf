@@ -17,3 +17,4 @@ langchain_chroma
 langchain_huggingface
 gpt4all
 pytesseract
+googletrans

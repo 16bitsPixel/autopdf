@@ -46,7 +46,15 @@ async def upload_pdf(file: UploadFile = File(...)):
                     "source": inserted_id,
                     "page": page["page_number"],
                 }
-                docs.append(Document(page["text"], metadata=metadata))
+                
+                # Combine all structured info for semantic search
+                text_block = page["text"]
+                if page.get("tables"):
+                    text_block += "\n\n[TABLES]\n" + "\n".join(page["tables"])
+                if page.get("figure_captions"):
+                    text_block += "\n\n[FIGURES]\n" + "\n".join(page["figure_captions"])
+
+                docs.append(Document(text_block, metadata=metadata))
 
         # Split and store in Chroma
         chunks = split_documents(docs)
