@@ -28,18 +28,11 @@ async def translate_pdf_file(input_path: str, output_dir="outputs", target_lang:
                     if not original_text.strip():
                         continue
                     try:
-                        # Debug: Log the original text to ensure it's being captured
-                        print(f"Original text: {original_text}")
-
                         # Await the translation coroutine and then access the .text attribute
                         translated = await translator.translate(original_text, dest=target_lang)
                         translated_text = translated.text  # Correctly accessing the text attribute
 
-                        # Debug: Log the translated text
-                        print(f"Translated text: {translated_text}")
                     except Exception as e:
-                        # Debug: Log the exception if translation fails
-                        print(f"Translation failed for text: {original_text} with error: {e}")
                         translated_text = original_text
 
                     # Convert the color to the appropriate format (range 0-1 for RGB)

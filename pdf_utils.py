@@ -77,7 +77,7 @@ def merge_text(native_text: str, ocr_text: str) -> str:
 
 def extract_table_blocks(data) -> list:
     """
-    Naively group OCR text into table-like structures based on bounding box alignment.
+    Group OCR text into table-like structures based on bounding box alignment.
     """
     n_boxes = len(data['text'])
     rows = []
