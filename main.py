@@ -9,6 +9,7 @@ from models import PDFDocument, SearchRequest, DeleteRequest, QAQuery
 from typing import List
 from semantic_search_qa import split_documents, add_to_chroma, delete_texts_from_chroma, query_semantic_search, query_rag
 from langchain.schema import Document
+from translation import translate_pdf_file
 import os
 
 import tempfile
@@ -46,7 +47,7 @@ async def upload_pdf(file: UploadFile = File(...)):
                     "source": inserted_id,
                     "page": page["page_number"],
                 }
-                
+
                 # Combine all structured info for semantic search
                 text_block = page["text"]
                 if page.get("tables"):
@@ -146,3 +147,24 @@ def document_qa(request: QAQuery):
         "question": request.question,
         "answer": response_text
     }
+
+@app.post("/translate-pdf")
+async def translate_pdf(file: UploadFile = File(...)):
+    """
+    Upload a PDF file, translate it to Spanish, and return the translated PDF.
+    """
+    # Create a temporary file to save the uploaded PDF
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_file:
+        shutil.copyfileobj(file.file, temp_file)
+        temp_file_path = temp_file.name
+
+    # Define output directory and ensure it exists
+    output_dir = "outputs"
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    # Await the translation function since it's asynchronous
+    translated_pdf_path = await translate_pdf_file(input_path=temp_file_path, output_dir=output_dir, target_lang="es")
+
+    # Return the translated PDF file
+    return FileResponse(translated_pdf_path, filename="translated_output.pdf")
