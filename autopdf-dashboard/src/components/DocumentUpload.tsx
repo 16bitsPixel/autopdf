@@ -36,7 +36,7 @@ const DocumentUpload: React.FC = () => {
           await refreshDocuments(); // 💡 Refresh Documents here
       
           // Optionally also run EDA
-          await runBatchEDA([response.data.id]);
+          fetchDocumentIds()
         } catch (error) {
           setMessage('Error uploading file: ' + (error.response?.data?.error || error.message));
         }
