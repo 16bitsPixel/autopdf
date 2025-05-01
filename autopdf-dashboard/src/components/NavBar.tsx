@@ -40,6 +40,15 @@ export default function Header() {
             >
               Chat
             </Typography>
+            <Typography
+              variant="h5"
+              noWrap
+              component="div"
+              sx={{ display: { xs: 'none', md: 'block' } }}
+              onClick={() => router.push('/translate')}
+            >
+              Translate
+            </Typography>
           </Box>
 
           {/* Right side: DocumentUpload */}
