@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Path
 from fastapi.responses import FileResponse
 from fastapi.responses import JSONResponse
 from pdf_utils import extract_pdf_data
@@ -10,6 +10,7 @@ from typing import List
 from semantic_search_qa import split_documents, add_to_chroma, delete_texts_from_chroma, query_semantic_search, query_rag
 from langchain.schema import Document
 from translation import translate_pdf_file
+from fastapi.middleware.cors import CORSMiddleware
 import os
 
 import tempfile
@@ -17,6 +18,13 @@ import shutil
 
 app = FastAPI()
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # Replace with your frontend's URL
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all HTTP methods (GET, POST, etc.)
+    allow_headers=["*"],  # Allow all headers
+)
 
 @app.post("/upload_pdf/")
 async def upload_pdf(file: UploadFile = File(...)):
@@ -30,7 +38,7 @@ async def upload_pdf(file: UploadFile = File(...)):
 
     try:
         # Extract data from the PDF file
-        pdf_data = extract_pdf_data(temp_file_path)
+        pdf_data = extract_pdf_data(temp_file_path, original_filename=file.filename)
 
         # Create a PDFDocument instance
         pdf_document = PDFDocument(**pdf_data)
@@ -71,7 +79,7 @@ async def upload_pdf(file: UploadFile = File(...)):
 @app.delete("/delete_pdf/")
 async def delete_pdf(request: DeleteRequest):
     """
-    Delete a PDF document from MongoDB and its embeddings from ChromaDB using ID.
+    Delete a PDF document from MongoDB, its embeddings from ChromaDB, and its folder in the outputs directory using ID.
     """
     try:
         # Step 1: Find and delete from MongoDB
@@ -84,7 +92,12 @@ async def delete_pdf(request: DeleteRequest):
         # Step 2: Delete all related pages from ChromaDB
         delete_texts_from_chroma(request.id)
 
-        return JSONResponse(content={"message": "PDF and embeddings deleted successfully."}, status_code=200)
+        # Step 3: Delete the folder in the outputs directory
+        output_folder_path = os.path.join("outputs", request.id)
+        if os.path.exists(output_folder_path) and os.path.isdir(output_folder_path):
+            shutil.rmtree(output_folder_path)  # Recursively delete the folder
+
+        return JSONResponse(content={"message": "PDF, embeddings, and output folder deleted successfully."}, status_code=200)
 
     except Exception as e:
         return JSONResponse(content={"error": str(e)}, status_code=500)
@@ -121,9 +134,9 @@ async def run_batch_eda(document_ids: List[str]):
     except Exception as e:
         return JSONResponse(content={"error": str(e)}, status_code=500)
     
-@app.get("/outputs/{filename}")
-async def get_output_file(filename: str):
-    file_path = os.path.join("outputs", filename)
+@app.get("/outputs/{file_path:path}")
+async def get_output_file(file_path: str = Path(...)):
+    file_path = os.path.join("outputs", file_path)
     if not os.path.isfile(file_path):
         raise HTTPException(status_code=404, detail="File not found")
     return FileResponse(file_path)

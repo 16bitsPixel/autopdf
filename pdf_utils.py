@@ -5,7 +5,7 @@ import io
 import pytesseract
 from PIL import Image
 
-def extract_pdf_data(filepath: str) -> dict:
+def extract_pdf_data(filepath: str, original_filename: str) -> dict:
     doc = fitz.open(filepath)
     pages = []
 
@@ -58,7 +58,7 @@ def extract_pdf_data(filepath: str) -> dict:
 
     doc.close()
     return {
-        "filename": os.path.basename(filepath),
+        "filename": original_filename,
         "pages": pages,
     }
 
