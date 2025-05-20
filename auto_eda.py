@@ -59,7 +59,7 @@ def plot_word_frequency(texts, top_n=20, output_dir="outputs"):
     plt.xticks(rotation=45, ha='right')
     plt.title(f'Top {top_n} Words')
     plt.tight_layout()
-    save_plot('top_words.svg', output_dir)
+    save_plot('top_words.png', output_dir)
 
 def plot_wordcloud(texts, output_dir="outputs"):
     """
@@ -72,7 +72,7 @@ def plot_wordcloud(texts, output_dir="outputs"):
     plt.imshow(wordcloud, interpolation='bilinear')
     plt.axis('off')
     plt.title("Word Cloud")
-    save_plot('wordcloud.svg', output_dir)
+    save_plot('wordcloud.png', output_dir)
 
 def plot_top_bigrams(texts, top_n=20, output_dir="outputs"):
     """
@@ -91,7 +91,7 @@ def plot_top_bigrams(texts, top_n=20, output_dir="outputs"):
     plt.xticks(rotation=45, ha='right')
     plt.title(f'Top {top_n} Bigrams')
     plt.tight_layout()
-    save_plot('top_bigrams.svg', output_dir)
+    save_plot('top_bigrams.png', output_dir)
 
 def perform_ner_collect(texts):
     """
@@ -125,7 +125,7 @@ def perform_sentiment_analysis_collect(texts):
             print(f"Sentiment error: {e}")
     return sentiments
 
-def plot_top_entities(entities, output_dir="outputs", filename="top_entities.svg"):
+def plot_top_entities(entities, output_dir="outputs", filename="top_entities.png"):
     """
     Plot top Named Entities.
     """
@@ -142,7 +142,7 @@ def plot_top_entities(entities, output_dir="outputs", filename="top_entities.svg
     plt.tight_layout()
     save_plot(filename, output_dir)
 
-def plot_sentiment_distribution(sentiments, output_dir="outputs", filename="sentiment_distribution.svg"):
+def plot_sentiment_distribution(sentiments, output_dir="outputs", filename="sentiment_distribution.png"):
     """
     Plot Sentiment Distribution.
     """
@@ -245,8 +245,8 @@ def full_eda_batch(document_ids, base_output_dir="outputs"):
     if not os.path.exists(overall_output_dir):
         os.makedirs(overall_output_dir)
 
-    plot_top_entities(all_entities, output_dir=overall_output_dir, filename='overall_top_entities.svg')
-    plot_sentiment_distribution(all_sentiments, output_dir=overall_output_dir, filename='overall_sentiment_distribution.svg')
+    plot_top_entities(all_entities, output_dir=overall_output_dir, filename='overall_top_entities.png')
+    plot_sentiment_distribution(all_sentiments, output_dir=overall_output_dir, filename='overall_sentiment_distribution.png')
 
     save_summary_csv(overall_stats)
 
